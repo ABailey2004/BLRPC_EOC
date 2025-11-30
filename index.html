@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Room - CAD System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Update notification -->
+    <div id="update-notification" style="display: none; position: fixed; top: 10px; right: 10px; background: #2563eb; color: white; padding: 1rem; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        <div id="update-message"></div>
+        <button id="install-update-btn" style="display: none; margin-top: 0.5rem; padding: 0.5rem 1rem; background: white; color: #2563eb; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Install Now</button>
+    </div>
+
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="fms-badge">BLRPC</div>
+                    <h1>Control Room CAD System</h1>
+                    <p>Scottish Roleplay Emergency Services</p>
+                    <p id="app-version" style="color: #666; font-size: 0.85rem; margin-top: 0.5rem;"></p>
+                </div>
+                <div class="login-form">
+                    <input type="password" id="access-code" placeholder="Access Code" autocomplete="off" />
+                    <input type="text" id="operator-name" placeholder="Operator Name" />
+                    <input type="text" id="operator-id" placeholder="Operator ID" />
+                    <button id="book-on-btn" class="btn-primary">Book On Duty</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard-screen" class="screen">
+            <header class="main-header">
+                <div class="header-left">
+                    <div class="fms-badge-small">BLRPC</div>
+                    <h2>Control Room</h2>
+                </div>
+                <div class="header-center">
+                    <div class="on-duty-timer">
+                        <span class="timer-label">On Duty:</span>
+                        <span id="duty-timer">00:00:00</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <span id="operator-info"></span>
+                    <button id="fids-btn" class="btn-header">FIDS</button>
+                    <button id="forms-btn" class="btn-header">Forms</button>
+                    <button id="book-off-btn" class="btn-header">Book Off</button>
+                </div>
+            </header>
+
+            <div class="main-content">
+                <!-- Left Sidebar - Units -->
+                <aside class="sidebar-left">
+                    <div class="sidebar-header">
+                        <h3>Units</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button id="create-unit-btn" class="btn-small btn-success">+ Create Unit</button>
+                            <button id="clear-units-btn" class="btn-small btn-danger">Clear Units</button>
+                        </div>
+                    </div>
+                    <div id="units-list" class="units-list"></div>
+                </aside>
+
+                <!-- Center - CAD List -->
+                <main class="cad-main">
+                    <div class="cad-header">
+                        <div class="cad-header-left">
+                            <h3>Active CADs</h3>
+                            <span id="cad-count" class="badge">0 Open CADs</span>
+                        </div>
+                        <button id="create-cad-btn" class="btn-primary">+ Log New Call</button>
+                    </div>
+                    <div id="cad-list" class="cad-list">
+                        <div class="empty-state">
+                            <p>No active CADs</p>
+                            <p class="empty-state-sub">Create a new call to get started</p>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Forms Screen -->
+        <div id="forms-screen" class="screen">
+            <header class="main-header">
+                <div class="header-left">
+                    <div class="fms-badge-small">BLRPC</div>
+                    <h2>Forms</h2>
+                </div>
+                <div class="header-right">
+                    <button id="back-to-dashboard-btn" class="btn-header">Back to Dashboard</button>
+                </div>
+            </header>
+            <div class="forms-content">
+                <div class="forms-tabs">
+                    <button class="tab-btn active" data-tab="incident-log">Incident Log</button>
+                    <button class="tab-btn" data-tab="major-incident">Major Incident Information</button>
+                    <button class="tab-btn" data-tab="call-taking">Call Taking Information</button>
+                </div>
+                <div class="forms-panels">
+                    <div id="incident-log" class="form-panel active">
+                        <h3>Incident Log</h3>
+                        <form id="incident-log-form">
+                            <div class="form-group">
+                                <label>Date & Time</label>
+                                <input type="datetime-local" id="incident-datetime" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Incident Type</label>
+                                <select id="incident-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="RTC">RTC (Road Traffic Collision)</option>
+                                    <option value="ASSAULT">Assault</option>
+                                    <option value="BURGLARY">Burglary</option>
+                                    <option value="THEFT">Theft</option>
+                                    <option value="DOMESTIC">Domestic Incident</option>
+                                    <option value="PUBLIC_ORDER">Public Order</option>
+                                    <option value="MEDICAL">Medical Emergency</option>
+                                    <option value="FIRE">Fire</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Location</label>
+                                <input type="text" id="incident-location" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="incident-description" rows="6" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Action Taken</label>
+                                <textarea id="incident-action" rows="4" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Operator</label>
+                                <input type="text" id="incident-operator" readonly />
+                            </div>
+                            <button type="submit" class="btn-primary">Save Incident Log</button>
+                        </form>
+                        <div id="incident-logs-list" class="logs-list"></div>
+                    </div>
+                    <div id="major-incident" class="form-panel">
+                        <h3>Major Incident Information</h3>
+                        <form id="major-incident-form">
+                            <div class="form-group">
+                                <label>Incident Name</label>
+                                <input type="text" id="major-incident-name" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Date & Time Declared</label>
+                                <input type="datetime-local" id="major-datetime" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Incident Commander</label>
+                                <input type="text" id="major-commander" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Location</label>
+                                <input type="text" id="major-location" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Type of Incident</label>
+                                <select id="major-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="MAJOR_RTC">Major RTC</option>
+                                    <option value="TERRORIST">Terrorist Incident</option>
+                                    <option value="NATURAL_DISASTER">Natural Disaster</option>
+                                    <option value="MASS_CASUALTY">Mass Casualty</option>
+                                    <option value="CIVIL_UNREST">Civil Unrest</option>
+                                    <option value="CHEMICAL">Chemical/Hazmat</option>
+                                    <option value="OTHER">Other Major Incident</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Severity Level</label>
+                                <select id="major-severity" required>
+                                    <option value="LEVEL_1">Level 1 - Minor</option>
+                                    <option value="LEVEL_2">Level 2 - Moderate</option>
+                                    <option value="LEVEL_3">Level 3 - Severe</option>
+                                    <option value="LEVEL_4">Level 4 - Critical</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Situation Report</label>
+                                <textarea id="major-sitrep" rows="6" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Resources Deployed</label>
+                                <textarea id="major-resources" rows="4" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Actions Taken</label>
+                                <textarea id="major-actions" rows="4" required></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary">Save Major Incident Info</button>
+                        </form>
+                        <div id="major-incidents-list" class="logs-list"></div>
+                    </div>
+                    <div id="call-taking" class="form-panel">
+                        <h3>Emergency Call Taking Guide</h3>
+                        <form id="call-taking-form">
+                            <div class="form-group">
+                                <label>Call Received Time</label>
+                                <input type="datetime-local" id="call-received-time" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Emergency Service Required</label>
+                                <select id="service-required" required>
+                                    <option value="">Which service do you require?</option>
+                                    <option value="POLICE">Police</option>
+                                    <option value="AMBULANCE">Ambulance</option>
+                                    <option value="FIRE">Fire & Rescue</option>
+                                    <option value="COASTGUARD">Coastguard</option>
+                                    <option value="MULTI">Multiple Services</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Universal Questions -->
+                            <div class="form-section">
+                                <h4>Essential Information (Ask for ALL calls)</h4>
+                                <div class="form-group">
+                                    <label>📍 What is the EXACT location of the emergency?</label>
+                                    <input type="text" id="call-location" required placeholder="Street name, building number, landmarks, postcode" />
+                                </div>
+                                <div class="form-group">
+                                    <label>📞 What is your telephone number?</label>
+                                    <input type="tel" id="caller-phone" required placeholder="In case we get disconnected" />
+                                </div>
+                                <div class="form-group">
+                                    <label>👤 What is your name?</label>
+                                    <input type="text" id="caller-name" required />
+                                </div>
+                            </div>
+
+                            <!-- Police Questions -->
+                            <div class="form-section service-questions" id="police-questions" style="display:none;">
+                                <h4>Police - Specific Questions</h4>
+                                <div class="form-group">
+                                    <label>🚨 What is happening RIGHT NOW?</label>
+                                    <textarea id="police-happening-now" rows="3" placeholder="Is the incident still ongoing?"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>👥 Are there any weapons involved?</label>
+                                    <select id="police-weapons">
+                                        <option value="">Select...</option>
+                                        <option value="NO">No</option>
+                                        <option value="KNIFE">Knife/Bladed weapon</option>
+                                        <option value="FIREARM">Firearm</option>
+                                        <option value="OTHER">Other weapon</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>🚶 Has anyone been injured?</label>
+                                    <select id="police-injuries">
+                                        <option value="">Select...</option>
+                                        <option value="NO">No injuries</option>
+                                        <option value="MINOR">Minor injuries</option>
+                                        <option value="SERIOUS">Serious injuries</option>
+                                        <option value="LIFE_THREATENING">Life threatening</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>👤 Description of suspect(s) if applicable</label>
+                                    <textarea id="police-suspect-desc" rows="3" placeholder="Age, gender, clothing, direction of travel, vehicle details"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>⚠️ Are you in a safe place?</label>
+                                    <select id="police-caller-safe">
+                                        <option value="">Select...</option>
+                                        <option value="YES">Yes, I am safe</option>
+                                        <option value="NO">No, I am not safe</option>
+                                        <option value="UNSURE">Unsure</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Ambulance Questions -->
+                            <div class="form-section service-questions" id="ambulance-questions" style="display:none;">
+                                <h4>Ambulance - Specific Questions</h4>
+                                <div class="form-group">
+                                    <label>🏥 Tell me exactly what happened</label>
+                                    <textarea id="amb-what-happened" rows="3" placeholder="What is the emergency?"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>😮 Is the patient breathing?</label>
+                                    <select id="amb-breathing">
+                                        <option value="">Select...</option>
+                                        <option value="YES_NORMAL">Yes, breathing normally</option>
+                                        <option value="YES_DIFFICULT">Yes, but difficulty breathing</option>
+                                        <option value="NO">Not breathing</option>
+                                        <option value="UNSURE">Unsure</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>💭 Is the patient conscious?</label>
+                                    <select id="amb-conscious">
+                                        <option value="">Select...</option>
+                                        <option value="ALERT">Alert and talking</option>
+                                        <option value="DROWSY">Drowsy/Confused</option>
+                                        <option value="UNCONSCIOUS">Unconscious</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>🩸 Is there serious bleeding?</label>
+                                    <select id="amb-bleeding">
+                                        <option value="">Select...</option>
+                                        <option value="NO">No</option>
+                                        <option value="MINOR">Minor bleeding</option>
+                                        <option value="SEVERE">Severe bleeding</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>👤 How old is the patient?</label>
+                                    <input type="text" id="amb-age" placeholder="Age or approximate age" />
+                                </div>
+                                <div class="form-group">
+                                    <label>⚕️ Does the patient have any medical conditions?</label>
+                                    <textarea id="amb-medical-history" rows="2" placeholder="Diabetes, heart condition, allergies, etc."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>🚪 Access information</label>
+                                    <input type="text" id="amb-access" placeholder="Which door/entrance? Any access codes? Stairs/Lift?" />
+                                </div>
+                            </div>
+
+                            <!-- Fire Questions -->
+                            <div class="form-section service-questions" id="fire-questions" style="display:none;">
+                                <h4>Fire & Rescue - Specific Questions</h4>
+                                <div class="form-group">
+                                    <label>🔥 What is on fire?</label>
+                                    <textarea id="fire-what-burning" rows="3" placeholder="Building, vehicle, outdoor fire, etc."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>🏢 What type of building/property?</label>
+                                    <select id="fire-property-type">
+                                        <option value="">Select...</option>
+                                        <option value="HOUSE">House/Flat</option>
+                                        <option value="COMMERCIAL">Commercial Building</option>
+                                        <option value="VEHICLE">Vehicle</option>
+                                        <option value="INDUSTRIAL">Industrial</option>
+                                        <option value="OUTDOOR">Outdoor/Wildfire</option>
+                                        <option value="OTHER">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>👥 Is anyone trapped inside?</label>
+                                    <select id="fire-trapped">
+                                        <option value="">Select...</option>
+                                        <option value="NO">No one trapped</option>
+                                        <option value="YES">Yes, people trapped</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>🚶 Has everyone been evacuated?</label>
+                                    <select id="fire-evacuated">
+                                        <option value="">Select...</option>
+                                        <option value="YES">Yes, all evacuated</option>
+                                        <option value="NO">No, not fully evacuated</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>🤕 Are there any injuries?</label>
+                                    <select id="fire-injuries">
+                                        <option value="">Select...</option>
+                                        <option value="NO">No injuries</option>
+                                        <option value="YES_MINOR">Yes, minor injuries</option>
+                                        <option value="YES_SERIOUS">Yes, serious injuries</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>⚠️ Are there any hazards? (Gas, chemicals, etc.)</label>
+                                    <textarea id="fire-hazards" rows="2" placeholder="Gas cylinders, chemicals, fuel, etc."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>🚪 Access information for fire crews</label>
+                                    <input type="text" id="fire-access" placeholder="Gates, codes, best access route" />
+                                </div>
+                            </div>
+
+                            <!-- Additional Information -->
+                            <div class="form-section">
+                                <h4>Additional Information</h4>
+                                <div class="form-group">
+                                    <label>📝 Additional details/notes</label>
+                                    <textarea id="call-additional-notes" rows="4" placeholder="Any other relevant information..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Call Taker</label>
+                                    <input type="text" id="call-taker" readonly />
+                                </div>
+                                <div class="form-group">
+                                    <label>CAD Reference (if created)</label>
+                                    <input type="text" id="call-cad-ref" placeholder="Optional" />
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary">Save Call Record</button>
+                        </form>
+                        <div id="call-taking-list" class="logs-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FIDS Screen -->
+        <div id="fids-screen" class="screen">
+            <header class="main-header">
+                <div class="header-left">
+                    <div class="fms-badge-small">BLRPC</div>
+                    <h2>Firearms Incident Deployment System (FIDS)</h2>
+                </div>
+                <div class="header-right">
+                    <button id="back-to-dashboard-fids-btn" class="btn-header">Back to Dashboard</button>
+                </div>
+            </header>
+            <div class="fids-content">
+                <div id="fids-display" class="fids-display">
+                    <!-- Start Screen -->
+                    <div class="fids-card fids-start">
+                        <h1>FIREARMS INCIDENT<br>DEPLOYMENT SYSTEM</h1>
+                        <button id="start-fids-btn" class="btn-fids-start">START FIREARMS GRADING</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAD Detail Modal -->
+        <div id="cad-detail-modal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2 id="cad-detail-title">CAD Details</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="cad-detail-grid">
+                        <div class="cad-detail-left">
+                            <div class="detail-section">
+                                <h4>Call Information</h4>
+                                <div class="detail-item">
+                                    <span class="detail-label">Reference:</span>
+                                    <span id="detail-reference"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Type:</span>
+                                    <span id="detail-type"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Location:</span>
+                                    <span id="detail-location"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Status:</span>
+                                    <span id="detail-status"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Grading:</span>
+                                    <span id="detail-grading"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Started:</span>
+                                    <span id="detail-start-time"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Duration:</span>
+                                    <span id="detail-duration"></span>
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <h4>Description</h4>
+                                <p id="detail-description"></p>
+                            </div>
+                            <div class="detail-section">
+                                <h4>Assigned Units</h4>
+                                <div id="detail-assigned-units" class="assigned-units-list"></div>
+                                <select id="assign-unit-select" class="form-control">
+                                    <option value="">-- Assign Unit --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="cad-detail-right">
+                            <div class="detail-section">
+                                <h4>CAD Comments</h4>
+                                <div id="cad-comments-list" class="comments-list"></div>
+                                <div class="comment-input-group">
+                                    <textarea id="new-comment-input" placeholder="Add CAD comment..." rows="3"></textarea>
+                                    <button id="add-comment-btn" class="btn-primary">Add Comment</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="end-call-btn" class="btn-warning">End Call</button>
+                    <button id="delete-cad-btn" class="btn-danger">Delete CAD</button>
+                    <button class="btn-secondary modal-close">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create CAD Modal -->
+        <div id="create-cad-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Log New Call</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-cad-form">
+                        <div class="form-group">
+                            <label>Call Type</label>
+                            <input type="text" id="new-cad-type" required placeholder="e.g., RTC, Assault, Burglary, Welfare Check" />
+                        </div>
+                        <div class="form-group">
+                            <label>Location</label>
+                            <input type="text" id="new-cad-location" required placeholder="e.g., AMERICANO WAY, ACE JONES DRIVE" />
+                        </div>
+                        <div class="form-group">
+                            <label>Grading</label>
+                            <select id="new-cad-grading" required>
+                                <option value="">Select Grading</option>
+                                <option value="IMMEDIATE">Immediate</option>
+                                <option value="DELAYED">Delayed</option>
+                                <option value="STANDARD">Standard</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="new-cad-description" rows="4" required placeholder="Describe the incident..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Channel</label>
+                            <input type="text" id="new-cad-channel" placeholder="e.g., CENT4, EEYE1, NNATFA1" />
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button id="submit-cad-btn" class="btn-primary">Create CAD</button>
+                    <button class="btn-secondary modal-close">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Unit Modal -->
+        <div id="create-unit-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Create Unit</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-unit-form">
+                        <div class="form-group">
+                            <label>Call Sign</label>
+                            <input type="text" id="new-unit-callsign" required placeholder="e.g., DW28, TX48, CM452" />
+                        </div>
+                        <div class="form-group">
+                            <label>Unit Type</label>
+                            <select id="new-unit-type" required>
+                                <option value="">Select Type</option>
+                                <option value="TRAFFIC_CAR">Traffic Car</option>
+                                <option value="DOGS">Dogs</option>
+                                <option value="AMBULANCE">Ambulance</option>
+                                <option value="RESPONSE_VEHICLE">Response Vehicle</option>
+                                <option value="ARV">ARV (Armed Response)</option>
+                                <option value="SERGEANT">Sergeant</option>
+                                <option value="INSPECTOR">Inspector</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Officer/Crew</label>
+                            <input type="text" id="new-unit-crew" required placeholder="Officer name(s)" />
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="new-unit-status">
+                                <option value="AVAILABLE">Available</option>
+                                <option value="ON_SCENE">On Scene</option>
+                                <option value="EN_ROUTE">En Route</option>
+                                <option value="UNAVAILABLE">Unavailable</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button id="submit-unit-btn" class="btn-primary">Create Unit</button>
+                    <button class="btn-secondary modal-close">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clear Units Modal -->
+        <div id="clear-units-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Clear Units</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="color: #999; margin-bottom: 1rem;">Select units to remove:</p>
+                    <div id="clear-units-list" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button id="confirm-clear-units-btn" class="btn-danger">Remove Selected Units</button>
+                    <button class="btn-secondary modal-close">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Unit Modal -->
+        <div id="edit-unit-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Edit Unit</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-unit-form">
+                        <div class="form-group">
+                            <label>Call Sign</label>
+                            <input type="text" id="edit-unit-callsign" disabled style="background: #1a1a1a; cursor: not-allowed;" />
+                        </div>
+                        <div class="form-group">
+                            <label>Unit Type</label>
+                            <input type="text" id="edit-unit-type" disabled style="background: #1a1a1a; cursor: not-allowed;" />
+                        </div>
+                        <div class="form-group">
+                            <label>Officer/Crew</label>
+                            <input type="text" id="edit-unit-crew" disabled style="background: #1a1a1a; cursor: not-allowed;" />
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="edit-unit-status">
+                                <option value="AVAILABLE">Available</option>
+                                <option value="ON_SCENE">On Scene</option>
+                                <option value="EN_ROUTE">En Route</option>
+                                <option value="UNAVAILABLE">Unavailable</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes (Visible to all operators)</label>
+                            <textarea id="edit-unit-notes" rows="4" placeholder="Add notes about this unit..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button id="delete-unit-btn" class="btn-danger">Delete Unit</button>
+                    <button id="save-unit-btn" class="btn-primary">Save Changes</button>
+                    <button class="btn-secondary modal-close">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

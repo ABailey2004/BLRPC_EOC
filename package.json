@@ -1,0 +1,76 @@
+{
+  "name": "blrpc-control-room",
+  "version": "1.0.0",
+  "description": "BLRPC Control Room CAD System",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "publish": "electron-builder --win --publish always"
+  },
+  "keywords": [
+    "electron",
+    "cad",
+    "control-room",
+    "blrpc"
+  ],
+  "author": "BLRPC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ABailey2004/BLRPC_EOC.git"
+  },
+  "build": {
+    "appId": "com.blrpc.controlroom",
+    "productName": "BLRPC Control Room",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "ABailey2004",
+          "repo": "BLRPC_EOC"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "installerIcon": "assets/icon.png",
+      "uninstallerIcon": "assets/icon.png",
+      "installerHeaderIcon": "assets/icon.png",
+      "deleteAppDataOnUninstall": false
+    },
+    "files": [
+      "**/*",
+      "!node_modules/sharp${/*}",
+      "node_modules/sharp/build/Release/sharp-win32-x64.node"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "ABailey2004",
+      "repo": "BLRPC_EOC",
+      "private": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2",
+    "sharp": "^0.34.5"
+  }
+}

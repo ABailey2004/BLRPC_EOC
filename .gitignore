@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Electron
+dist/
+out/
+*.exe
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Keep .vscode for project settings
+!.vscode/
+
+# Environment
+.env
