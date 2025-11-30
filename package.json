@@ -26,31 +26,15 @@
     "appId": "com.blrpc.controlroom",
     "productName": "BLRPC Control Room",
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
       "icon": "assets/icon.png",
-      "publish": [
-        {
-          "provider": "github",
-          "owner": "ABailey2004",
-          "repo": "BLRPC_EOC"
-        }
-      ]
+      "verifyUpdateCodeSignature": false,
+      "sign": null
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "assets/icon.png",
-      "uninstallerIcon": "assets/icon.png",
-      "installerHeaderIcon": "assets/icon.png",
       "deleteAppDataOnUninstall": false
     },
     "files": [
@@ -67,10 +51,11 @@
   },
   "devDependencies": {
     "electron": "^27.0.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
   },
   "dependencies": {
-    "electron-updater": "^6.6.2",
-    "sharp": "^0.34.5"
+    "electron-updater": "^6.6.2"
   }
 }
