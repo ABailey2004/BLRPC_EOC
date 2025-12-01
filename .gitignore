@@ -24,6 +24,3 @@ Thumbs.db
 
 # Environment
 .env
-
-# Configuration (contains sensitive data)
-config.js

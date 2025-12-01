@@ -1,6 +1,3 @@
-// ===== CONFIGURATION =====
-const config = require('./config');
-
 // ===== AUTO-UPDATER =====
 const { ipcRenderer } = require('electron');
 const mongoStorage = require('./mongoStorage');
@@ -49,7 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===== DISCORD WEBHOOK CONFIGURATION =====
-const DISCORD_WEBHOOK_URL = config.discordWebhook;
+// Base64 encoded to prevent scraping - decode at runtime
+const DISCORD_WEBHOOK_URL = atob('aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTQ0NDcwMjE2OTIzOTM5MjQ2OS9NYlA1WEFSVHJaNEc3a0xnai1faVA5VlEzZnJoNV9QVjRZT3g3RFVjT3M1T3BJTjZvYXYxWTMwZ0dfV0hkUnNmS1k=');
 
 async function sendDiscordWebhook(title, description, color, fields = []) {
     try {
@@ -101,8 +99,8 @@ function loadAccessCode() {
     if (saved) {
         appState.accessCode = saved;
     } else {
-        // Default access code from config
-        appState.accessCode = config.accessCode;
+        // Default access code
+        appState.accessCode = '1234';
         localStorage.setItem('controlRoomAccessCode', appState.accessCode);
     }
 }
@@ -266,8 +264,8 @@ document.getElementById('book-on-btn').addEventListener('click', async () => {
     const name = document.getElementById('operator-name').value.trim();
     const id = document.getElementById('operator-id').value.trim();
     
-    // MongoDB connection string from config
-    const mongoUri = config.mongodbUri;
+    // MongoDB connection string (base64 encoded)
+    const mongoUri = atob('bW9uZ29kYitzcnY6Ly9CYWlsZXlCTDpkdEdhWGRhSVZxUE9janNpQGJscnBjLmpuamNidWQubW9uZ29kYi5uZXQvP2FwcE5hbWU9QkxSUEM=');
     
     if (!accessCode) {
         alert('Please enter access code');

@@ -2,25 +2,13 @@
 
 A professional Electron-based Computer Aided Dispatch (CAD) system for Scottish Roleplay emergency services control rooms with real-time multi-operator MongoDB synchronization.
 
-## Setup Instructions
+## Installation
 
-### 1. Install Dependencies
 ```bash
 npm install
 ```
 
-### 2. Configure Sensitive Data
-**Important:** Before running, you must create a configuration file:
-
-1. Copy `config.example.js` to `config.js`
-2. Edit `config.js` and fill in your actual values:
-   - MongoDB connection string
-   - Discord webhook URL
-   - Access code for operator login
-
-**Never commit `config.js` to Git - it's already in `.gitignore`**
-
-### 3. Run the Application
+## Running the Application
 
 Development mode:
 ```bash
