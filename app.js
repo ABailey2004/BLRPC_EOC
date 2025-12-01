@@ -1,6 +1,5 @@
-// ===== ACCESS CODE CONFIGURATION =====
-// TO CHANGE ACCESS CODE: Modify the default value below (line 23)
-// Current default access code: '1234'
+// ===== CONFIGURATION =====
+const config = require('./config');
 
 // ===== AUTO-UPDATER =====
 const { ipcRenderer } = require('electron');
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===== DISCORD WEBHOOK CONFIGURATION =====
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1444702169239392469/MbP5XARTrZ4G7kLgj-_iP9VQ3frh5_PV4YOx7DUcOs5OpIN6oav1Y30gG_WHdRDrsfKY';
+const DISCORD_WEBHOOK_URL = config.discordWebhook;
 
 async function sendDiscordWebhook(title, description, color, fields = []) {
     try {
@@ -102,8 +101,8 @@ function loadAccessCode() {
     if (saved) {
         appState.accessCode = saved;
     } else {
-        // Default access code on first run
-        appState.accessCode = '1234';
+        // Default access code from config
+        appState.accessCode = config.accessCode;
         localStorage.setItem('controlRoomAccessCode', appState.accessCode);
     }
 }
@@ -267,8 +266,8 @@ document.getElementById('book-on-btn').addEventListener('click', async () => {
     const name = document.getElementById('operator-name').value.trim();
     const id = document.getElementById('operator-id').value.trim();
     
-    // MongoDB connection string
-    const mongoUri = 'mongodb+srv://BaileyBL:dtGaXdaIVqPOcjsi@blrpc.jnjcbud.mongodb.net/?appName=BLRPC';
+    // MongoDB connection string from config
+    const mongoUri = config.mongodbUri;
     
     if (!accessCode) {
         alert('Please enter access code');
