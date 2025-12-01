@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const database = require('./database');
 
 // Disable GPU hardware acceleration to prevent GPU errors
 app.disableHardwareAcceleration();
@@ -105,4 +106,78 @@ ipcMain.on('check-for-updates', () => {
 // IPC handler to install update now
 ipcMain.on('install-update', () => {
   autoUpdater.quitAndInstall();
+});
+
+// Database IPC handlers
+ipcMain.handle('db-connect', async (event, connectionString) => {
+  return await database.connect(connectionString);
+});
+
+ipcMain.handle('db-disconnect', async () => {
+  return await database.disconnect();
+});
+
+ipcMain.handle('db-is-connected', () => {
+  return database.isConnected();
+});
+
+// CAD operations
+ipcMain.handle('db-save-cad', async (event, cad) => {
+  return await database.saveCad(cad);
+});
+
+ipcMain.handle('db-get-cads', async () => {
+  return await database.getCads();
+});
+
+ipcMain.handle('db-delete-cad', async (event, reference) => {
+  return await database.deleteCad(reference);
+});
+
+// Unit operations
+ipcMain.handle('db-save-unit', async (event, unit) => {
+  return await database.saveUnit(unit);
+});
+
+ipcMain.handle('db-get-units', async () => {
+  return await database.getUnits();
+});
+
+ipcMain.handle('db-delete-unit', async (event, callsign) => {
+  return await database.deleteUnit(callsign);
+});
+
+// Operator operations
+ipcMain.handle('db-save-operator', async (event, operator) => {
+  return await database.saveOperator(operator);
+});
+
+ipcMain.handle('db-get-operators', async () => {
+  return await database.getOperators();
+});
+
+ipcMain.handle('db-remove-operator', async (event, name) => {
+  return await database.removeOperator(name);
+});
+
+// Watch for real-time changes
+let cadWatcher = null;
+let unitWatcher = null;
+
+ipcMain.on('db-watch-cads', () => {
+  if (cadWatcher) return;
+  cadWatcher = database.watchCads((change) => {
+    if (mainWindow) {
+      mainWindow.webContents.send('db-cads-changed', change);
+    }
+  });
+});
+
+ipcMain.on('db-watch-units', () => {
+  if (unitWatcher) return;
+  unitWatcher = database.watchUnits((change) => {
+    if (mainWindow) {
+      mainWindow.webContents.send('db-units-changed', change);
+    }
+  });
 });

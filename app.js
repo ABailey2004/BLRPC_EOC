@@ -4,6 +4,7 @@
 
 // ===== AUTO-UPDATER =====
 const { ipcRenderer } = require('electron');
+const mongoStorage = require('./mongoStorage');
 
 // Listen for version info
 ipcRenderer.on('app-version', (event, version) => {
@@ -149,7 +150,7 @@ function calculateDuration(startTime) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function saveToLocalStorage() {
+async function saveToLocalStorage() {
     const stateData = {
         nextCadNumber: appState.nextCadNumber,
         cads: appState.cads.map(cad => ({
@@ -161,12 +162,27 @@ function saveToLocalStorage() {
         forms: appState.forms,
         lastModified: new Date().toISOString()
     };
+    
+    // Save CADs to database
+    for (const cad of appState.cads) {
+        await mongoStorage.saveCAD({
+            ...cad,
+            startTime: cad.startTime.toISOString(),
+            endTime: cad.endTime ? cad.endTime.toISOString() : null
+        });
+    }
+    
+    // Save units to database
+    for (const unit of appState.units) {
+        await mongoStorage.saveUnit(unit);
+    }
+    
+    // Fallback to localStorage if not using MongoDB
     localStorage.setItem('controlRoomState', JSON.stringify(stateData));
-    // Trigger storage event for other windows
     localStorage.setItem('controlRoomSync', Date.now().toString());
 }
 
-function loadFromLocalStorage() {
+async function loadFromLocalStorage() {
     const saved = localStorage.getItem('controlRoomState');
     if (saved) {
         const data = JSON.parse(saved);
@@ -246,10 +262,13 @@ function hideModal(modalId) {
 }
 
 // ===== LOGIN FUNCTIONALITY =====
-document.getElementById('book-on-btn').addEventListener('click', () => {
+document.getElementById('book-on-btn').addEventListener('click', async () => {
     const accessCode = document.getElementById('access-code').value;
     const name = document.getElementById('operator-name').value.trim();
     const id = document.getElementById('operator-id').value.trim();
+    
+    // MongoDB connection string
+    const mongoUri = 'mongodb+srv://BaileyBL:dtGaXdaIVqPOcjsi@blrpc.jnjcbud.mongodb.net/?appName=BLRPC';
     
     if (!accessCode) {
         alert('Please enter access code');
@@ -266,9 +285,39 @@ document.getElementById('book-on-btn').addEventListener('click', () => {
         alert('Please enter both operator name and ID');
         return;
     }
+
+    // Connect to MongoDB if provided
+    if (mongoUri) {
+        const connected = await mongoStorage.connect(mongoUri);
+        if (connected) {
+            // Load all data from MongoDB
+            const data = await mongoStorage.loadAllData();
+            if (data) {
+                appState.cads = data.cads || [];
+                appState.units = data.units || [];
+                window.appState = appState; // Make available to mongoStorage
+                
+                // Listen for real-time changes
+                ipcRenderer.on('db-cads-changed', async () => {
+                    const cads = await ipcRenderer.invoke('db-get-cads');
+                    appState.cads = cads;
+                    renderCADList();
+                });
+                
+                ipcRenderer.on('db-units-changed', async () => {
+                    const units = await ipcRenderer.invoke('db-get-units');
+                    appState.units = units;
+                    renderUnitsList();
+                });
+            }
+        }
+    }
     
     appState.operator = { name, id };
     appState.dutyStartTime = new Date();
+    
+    // Save operator to database
+    await mongoStorage.saveOperator({ name, id });
     
     document.getElementById('operator-info').textContent = `${name} (${id})`;
     
@@ -284,7 +333,9 @@ document.getElementById('book-on-btn').addEventListener('click', () => {
         document.getElementById('call-taker').value = name;
     }
     
-    loadFromLocalStorage();
+    if (!mongoUri) {
+        loadFromLocalStorage();
+    }
     renderCADList();
     renderUnitsList();
     
@@ -295,7 +346,8 @@ document.getElementById('book-on-btn').addEventListener('click', () => {
         3447003,
         [
             { name: 'Operator', value: name, inline: true },
-            { name: 'ID', value: id, inline: true }
+            { name: 'ID', value: id, inline: true },
+            { name: 'Sync Mode', value: mongoUri ? 'MongoDB (Real-time)' : 'Local Storage', inline: true }
         ]
     );
     
@@ -951,7 +1003,7 @@ document.getElementById('create-cad-btn').addEventListener('click', () => {
     showModal('create-cad-modal');
 });
 
-document.getElementById('submit-cad-btn').addEventListener('click', (e) => {
+document.getElementById('submit-cad-btn').addEventListener('click', async (e) => {
     e.preventDefault();
     
     const type = document.getElementById('new-cad-type').value;
@@ -981,7 +1033,7 @@ document.getElementById('submit-cad-btn').addEventListener('click', (e) => {
     };
     
     appState.cads.unshift(cad);
-    saveToLocalStorage();
+    await saveToLocalStorage();
     renderCADList();
     
     // Send Discord notification
@@ -1120,7 +1172,7 @@ function renderCADComments(cad) {
     `).join('');
 }
 
-document.getElementById('assign-unit-select').addEventListener('change', (e) => {
+document.getElementById('assign-unit-select').addEventListener('change', async (e) => {
     const callsign = e.target.value;
     if (!callsign || !appState.currentCadDetail) return;
     
@@ -1133,9 +1185,10 @@ document.getElementById('assign-unit-select').addEventListener('change', (e) => 
     const unit = appState.units.find(u => u.callsign === callsign);
     if (unit) {
         unit.status = 'EN_ROUTE';
+        await mongoStorage.saveUnit(unit);
     }
     
-    saveToLocalStorage();
+    await saveToLocalStorage();
     renderAssignedUnits(cad);
     renderUnitsList();
     renderCADList();
@@ -1148,7 +1201,7 @@ document.getElementById('assign-unit-select').addEventListener('change', (e) => 
             .join('');
 });
 
-function unassignUnit(callsign, cadId) {
+async function unassignUnit(callsign, cadId) {
     const cad = appState.cads.find(c => c.id === cadId);
     if (!cad) return;
     
@@ -1158,9 +1211,10 @@ function unassignUnit(callsign, cadId) {
     const unit = appState.units.find(u => u.callsign === callsign);
     if (unit) {
         unit.status = 'AVAILABLE';
+        await mongoStorage.saveUnit(unit);
     }
     
-    saveToLocalStorage();
+    await saveToLocalStorage();
     renderAssignedUnits(cad);
     renderUnitsList();
     renderCADList();
@@ -1174,7 +1228,7 @@ function unassignUnit(callsign, cadId) {
             .join('');
 }
 
-document.getElementById('add-comment-btn').addEventListener('click', () => {
+document.getElementById('add-comment-btn').addEventListener('click', async () => {
     const commentText = document.getElementById('new-comment-input').value.trim();
     if (!commentText || !appState.currentCadDetail) return;
     
@@ -1188,14 +1242,14 @@ document.getElementById('add-comment-btn').addEventListener('click', () => {
     };
     
     cad.comments.push(comment);
-    saveToLocalStorage();
+    await saveToLocalStorage();
     renderCADComments(cad);
     renderCADList();
     
     document.getElementById('new-comment-input').value = '';
 });
 
-document.getElementById('end-call-btn').addEventListener('click', () => {
+document.getElementById('end-call-btn').addEventListener('click', async () => {
     if (!appState.currentCadDetail) return;
     
     const cad = appState.cads.find(c => c.reference === appState.currentCadDetail);
@@ -1206,12 +1260,15 @@ document.getElementById('end-call-btn').addEventListener('click', () => {
         cad.status = 'CLOSED';
         
         // Free up assigned units
-        cad.assignedUnits.forEach(callsign => {
+        for (const callsign of cad.assignedUnits) {
             const unit = appState.units.find(u => u.callsign === callsign);
-            if (unit) unit.status = 'AVAILABLE';
-        });
+            if (unit) {
+                unit.status = 'AVAILABLE';
+                await mongoStorage.saveUnit(unit);
+            }
+        }
         
-        saveToLocalStorage();
+        await saveToLocalStorage();
         renderCADList();
         renderUnitsList();
         hideModal('cad-detail-modal');
@@ -1219,7 +1276,7 @@ document.getElementById('end-call-btn').addEventListener('click', () => {
     }
 });
 
-document.getElementById('delete-cad-btn').addEventListener('click', () => {
+document.getElementById('delete-cad-btn').addEventListener('click', async () => {
     if (!appState.currentCadDetail) return;
     
     const cad = appState.cads.find(c => c.reference === appState.currentCadDetail);
@@ -1227,13 +1284,17 @@ document.getElementById('delete-cad-btn').addEventListener('click', () => {
     
     if (confirm('Delete this CAD permanently? This cannot be undone.')) {
         // Free up assigned units
-        cad.assignedUnits.forEach(callsign => {
+        for (const callsign of cad.assignedUnits) {
             const unit = appState.units.find(u => u.callsign === callsign);
-            if (unit) unit.status = 'AVAILABLE';
-        });
+            if (unit) {
+                unit.status = 'AVAILABLE';
+                await mongoStorage.saveUnit(unit);
+            }
+        }
         
+        await mongoStorage.deleteCAD(cad.reference);
         appState.cads = appState.cads.filter(c => c.id !== cad.id);
-        saveToLocalStorage();
+        await saveToLocalStorage();
         renderCADList();
         renderUnitsList();
         hideModal('cad-detail-modal');
@@ -1246,7 +1307,7 @@ document.getElementById('create-unit-btn').addEventListener('click', () => {
     showModal('create-unit-modal');
 });
 
-document.getElementById('submit-unit-btn').addEventListener('click', (e) => {
+document.getElementById('submit-unit-btn').addEventListener('click', async (e) => {
     e.preventDefault();
     
     const callsign = document.getElementById('new-unit-callsign').value.trim().toUpperCase();
@@ -1275,7 +1336,7 @@ document.getElementById('submit-unit-btn').addEventListener('click', (e) => {
     };
     
     appState.units.push(unit);
-    saveToLocalStorage();
+    await saveToLocalStorage();
     renderUnitsList();
     
     // Send Discord notification
@@ -1365,7 +1426,7 @@ function isUnitAssigned(unitId) {
     );
 }
 
-function confirmClearUnits() {
+async function confirmClearUnits() {
     const checkboxes = document.querySelectorAll('.clear-unit-checkbox:checked');
     const unitIdsToRemove = Array.from(checkboxes).map(cb => parseInt(cb.dataset.unitId));
     
@@ -1379,11 +1440,16 @@ function confirmClearUnits() {
     
     if (confirm(`Remove ${unitIdsToRemove.length} unit(s)?\n\n${unitNames}\n\nThis will also unassign them from any CADs.`)) {
         // Remove units from all CADs
-        appState.cads.forEach(cad => {
+        for (const cad of appState.cads) {
             if (cad.assignedUnits) {
                 cad.assignedUnits = cad.assignedUnits.filter(unitId => !unitIdsToRemove.includes(unitId));
             }
-        });
+        }
+        
+        // Delete units from MongoDB
+        for (const unit of unitsToRemove) {
+            await mongoStorage.deleteUnit(unit.callsign);
+        }
         
         // Remove units from array
         appState.units = appState.units.filter(u => !unitIdsToRemove.includes(u.id));
@@ -1400,7 +1466,7 @@ function confirmClearUnits() {
             }
         }
         
-        saveToLocalStorage();
+        await saveToLocalStorage();
         hideModal('clear-units-modal');
     }
 }
@@ -1424,7 +1490,7 @@ function editUnit(unitId) {
 }
 
 // Save unit changes
-document.getElementById('save-unit-btn').addEventListener('click', () => {
+document.getElementById('save-unit-btn').addEventListener('click', async () => {
     const unit = appState.units.find(u => u.id === appState.currentEditingUnit);
     if (!unit) return;
     
@@ -1434,14 +1500,14 @@ document.getElementById('save-unit-btn').addEventListener('click', () => {
     unit.status = newStatus;
     unit.notes = newNotes;
     
-    saveToLocalStorage();
+    await saveToLocalStorage();
     renderUnitsList();
     renderCADList();
     hideModal('edit-unit-modal');
 });
 
 // Delete unit
-document.getElementById('delete-unit-btn').addEventListener('click', () => {
+document.getElementById('delete-unit-btn').addEventListener('click', async () => {
     const unit = appState.units.find(u => u.id === appState.currentEditingUnit);
     if (!unit) return;
     
@@ -1451,14 +1517,15 @@ document.getElementById('delete-unit-btn').addEventListener('click', () => {
         const unitCrew = unit.crew;
         
         // Remove from any CADs
-        appState.cads.forEach(cad => {
+        for (const cad of appState.cads) {
             if (cad.assignedUnits) {
                 cad.assignedUnits = cad.assignedUnits.filter(c => c !== unit.callsign);
             }
-        });
+        }
         
+        await mongoStorage.deleteUnit(unit.callsign);
         appState.units = appState.units.filter(u => u.id !== appState.currentEditingUnit);
-        saveToLocalStorage();
+        await saveToLocalStorage();
         renderUnitsList();
         renderCADList();
         
